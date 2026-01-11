@@ -75,7 +75,7 @@ public class Payment
     // Domain methods
     public void MarkAsSucceeded()
     {
-        Status = "succeeded";
+        Status = "Succeeded"; // Capitalizado para consistencia
         FechaPagoExitoso = DateTime.UtcNow;
         FechaActualizacion = DateTime.UtcNow;
         ErrorMessage = null;
@@ -83,7 +83,7 @@ public class Payment
 
     public void MarkAsFailed(string errorMessage)
     {
-        Status = "failed";
+        Status = "Failed"; // Capitalizado para consistencia
         ErrorMessage = errorMessage;
         FechaActualizacion = DateTime.UtcNow;
     }
@@ -96,6 +96,11 @@ public class Payment
 
     public bool IsMatriculaPayment()
     {
+        // Verificar primero por PaymentType (más confiable)
+        if (PaymentType == "Enrollment")
+            return true;
+            
+        // Fallback: verificar metadata
         return MetadataJson != null && 
                (MetadataJson.Contains("\"tipo\":\"matricula\"") || 
                 MetadataJson.Contains("matricula"));

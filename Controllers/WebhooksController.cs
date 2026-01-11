@@ -126,10 +126,55 @@ public class WebhooksController : ControllerBase
         var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
         if (paymentIntent == null) return;
 
-        _logger.LogInformation("PaymentIntent exitoso: {PaymentIntentId}", paymentIntent.Id);
+        _logger.LogInformation("PaymentIntent exitoso: {PaymentIntentId}, Status: {Status}", 
+            paymentIntent.Id, paymentIntent.Status);
 
-        // El procesamiento principal se hace en checkout.session.completed
-        // Este evento es para logging adicional
+        try
+        {
+            // Obtener todas las sesiones de checkout asociadas a este PaymentIntent
+            var sessionService = new SessionService();
+            var options = new SessionListOptions 
+            { 
+                PaymentIntent = paymentIntent.Id,
+                Limit = 10 // Aumentar a 10 por si acaso
+            };
+            
+            _logger.LogInformation("Buscando sesiones para PaymentIntent {PaymentIntentId}...", paymentIntent.Id);
+            var sessions = await sessionService.ListAsync(options);
+            _logger.LogInformation("Sesiones encontradas: {Count}", sessions.Data.Count);
+            
+            if (sessions.Data.Any())
+            {
+                var session = sessions.Data.First();
+                _logger.LogInformation("Procesando sesión {SessionId} para PaymentIntent {PaymentIntentId}", 
+                    session.Id, paymentIntent.Id);
+                
+                await _paymentService.ProcessPaymentCompletedAsync(session.Id);
+                _logger.LogInformation("✅ Pago procesado exitosamente para sesión {SessionId}", session.Id);
+            }
+            else
+            {
+                _logger.LogWarning("⚠️ No se encontró sesión de checkout para PaymentIntent {PaymentIntentId}. Metadata: {@Metadata}", 
+                    paymentIntent.Id, paymentIntent.Metadata);
+                
+                // Intentar buscar por cliente
+                if (!string.IsNullOrEmpty(paymentIntent.CustomerId))
+                {
+                    _logger.LogInformation("Intentando buscar por Customer {CustomerId}", paymentIntent.CustomerId);
+                    var sessionsByCustomer = await sessionService.ListAsync(new SessionListOptions 
+                    { 
+                        Customer = paymentIntent.CustomerId,
+                        Limit = 5
+                    });
+                    _logger.LogInformation("Sesiones por cliente: {Count}", sessionsByCustomer.Data.Count);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Error al procesar PaymentIntent {PaymentIntentId}: {Message}", 
+                paymentIntent.Id, ex.Message);
+        }
     }
 
     private async Task HandlePaymentIntentFailed(Event stripeEvent)

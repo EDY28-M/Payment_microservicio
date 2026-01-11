@@ -151,7 +151,7 @@ public class PaymentService : IPaymentService
             return;
         }
 
-        if (payment.Status == PaymentStatus.Succeeded)
+        if (payment.Status == "Succeeded")
         {
             _logger.LogInformation("Payment ya procesado: {PaymentId}", payment.Id);
             return;
