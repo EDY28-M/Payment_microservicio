@@ -24,14 +24,17 @@ public class PaymentDbContext : DbContext
         {
             entity.ToTable("Payment");
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.StripePaymentIntentId).IsUnique();
+            entity.HasIndex(e => e.StripeSessionId).IsUnique().HasDatabaseName("UQ_Payment_stripe_session_id");
             entity.HasIndex(e => e.IdEstudiante);
             entity.HasIndex(e => e.IdPeriodo);
             entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.PaymentType);
+            entity.HasIndex(e => e.Procesado);
 
             entity.Property(e => e.Amount).HasPrecision(10, 2);
             entity.Property(e => e.Currency).HasMaxLength(3);
             entity.Property(e => e.Status).HasMaxLength(50);
+            entity.Property(e => e.PaymentType).HasMaxLength(50);
         });
 
         // PaymentItem configuration

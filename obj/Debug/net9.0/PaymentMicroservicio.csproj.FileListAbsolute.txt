@@ -158,3 +158,4 @@ C:\Users\cater\Downloads\DOCKER CONTENEDOR\PaymentMicroservicio\PaymentMicroserv
 C:\Users\cater\Downloads\DOCKER CONTENEDOR\PaymentMicroservicio\PaymentMicroservicio\obj\Debug\net9.0\PaymentMicroservicio.pdb
 C:\Users\cater\Downloads\DOCKER CONTENEDOR\PaymentMicroservicio\PaymentMicroservicio\obj\Debug\net9.0\PaymentMicroservicio.genruntimeconfig.cache
 C:\Users\cater\Downloads\DOCKER CONTENEDOR\PaymentMicroservicio\PaymentMicroservicio\obj\Debug\net9.0\ref\PaymentMicroservicio.dll
+C:\Users\cater\Downloads\DOCKER CONTENEDOR\PaymentMicroservicio\PaymentMicroservicio\obj\Debug\net9.0\PaymentMicroservicio.sourcelink.json

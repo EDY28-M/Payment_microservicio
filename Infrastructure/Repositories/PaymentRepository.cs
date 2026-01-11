@@ -29,14 +29,14 @@ public class PaymentRepository : IPaymentRepository
     {
         return await _context.Payments
             .Include(p => p.PaymentItems)
-            .FirstOrDefaultAsync(p => p.StripePaymentIntentId == sessionId);
+            .FirstOrDefaultAsync(p => p.StripeSessionId == sessionId);
     }
 
     public async Task<Payment?> GetByPaymentIntentIdAsync(string paymentIntentId)
     {
         return await _context.Payments
             .Include(p => p.PaymentItems)
-            .FirstOrDefaultAsync(p => p.StripePaymentIntentId == paymentIntentId);
+            .FirstOrDefaultAsync(p => p.StripeSessionId == paymentIntentId);
     }
 
     public async Task<List<Payment>> GetByEstudianteAsync(int idEstudiante)
@@ -53,9 +53,9 @@ public class PaymentRepository : IPaymentRepository
         return await _context.Payments
             .Where(p => p.IdEstudiante == idEstudiante 
                      && p.IdPeriodo == idPeriodo 
-                     && p.Status == PaymentStatus.Succeeded
-                     && p.MetadataJson != null 
-                     && (p.MetadataJson.Contains("\"tipo\":\"matricula\"") || p.MetadataJson.Contains("matricula")))
+                     && p.Status == "Succeeded"
+                     && p.Procesado == true
+                     && (p.PaymentType == "Enrollment" || p.MetadataJson.Contains("matricula")))
             .OrderByDescending(p => p.FechaCreacion)
             .FirstOrDefaultAsync();
     }
@@ -65,9 +65,9 @@ public class PaymentRepository : IPaymentRepository
         return await _context.Payments
             .AnyAsync(p => p.IdEstudiante == idEstudiante 
                         && p.IdPeriodo == idPeriodo 
-                        && p.Status == PaymentStatus.Succeeded
-                        && p.MetadataJson != null 
-                        && (p.MetadataJson.Contains("\"tipo\":\"matricula\"") || p.MetadataJson.Contains("matricula")));
+                        && p.Status == "Succeeded"
+                        && p.Procesado == true
+                        && (p.PaymentType == "Enrollment" || p.MetadataJson.Contains("matricula")));
     }
 
     public async Task<Payment> CreateAsync(Payment payment)

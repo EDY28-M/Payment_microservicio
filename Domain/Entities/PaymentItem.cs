@@ -22,6 +22,11 @@ public class PaymentItem
     public int IdCurso { get; set; }
 
     [Required]
+    [Column("nombre_curso")]
+    [MaxLength(255)]
+    public string NombreCurso { get; set; } = string.Empty;
+
+    [Required]
     [Column("cantidad")]
     public int Cantidad { get; set; } = 1;
 

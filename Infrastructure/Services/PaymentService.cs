@@ -90,10 +90,11 @@ public class PaymentService : IPaymentService
         {
             IdEstudiante = idEstudiante,
             IdPeriodo = request.IdPeriodo,
-            StripePaymentIntentId = sessionId, // Guardamos el session ID
+            StripeSessionId = sessionId, // Guardamos el session ID
             Amount = amount,
             Currency = DEFAULT_CURRENCY.ToUpper(),
-            Status = PaymentStatus.Pending,
+            Status = PaymentStatus.Pending.ToString(),
+            PaymentType = request.TipoPago == "matricula" ? "Enrollment" : "Course",
             MetadataJson = JsonSerializer.Serialize(new { tipo = request.TipoPago, cursos = request.Cursos }),
             FechaCreacion = DateTime.UtcNow
         };
@@ -106,11 +107,24 @@ public class PaymentService : IPaymentService
                 payment.PaymentItems.Add(new PaymentItem
                 {
                     IdCurso = curso.IdCurso,
+                    NombreCurso = curso.Nombre ?? $"Curso {curso.IdCurso}",
                     Cantidad = curso.Cantidad,
                     PrecioUnitario = curso.Precio,
                     Subtotal = curso.Precio * curso.Cantidad
                 });
             }
+        }
+        else if (request.TipoPago == "matricula")
+        {
+            // Agregar un item genérico para matrícula
+            payment.PaymentItems.Add(new PaymentItem
+            {
+                IdCurso = 0,
+                NombreCurso = "Matrícula",
+                Cantidad = 1,
+                PrecioUnitario = amount,
+                Subtotal = amount
+            });
         }
 
         await _paymentRepository.CreateAsync(payment);
@@ -147,7 +161,7 @@ public class PaymentService : IPaymentService
         var session = await _stripeService.GetSessionAsync(sessionId);
 
         payment.MarkAsSucceeded();
-        payment.PaymentMethod = session.PaymentMethodTypes?.FirstOrDefault();
+        // Note: PaymentMethod no está implementado en este modelo simplificado
 
         // Si es pago de matrícula, marcar como procesado automáticamente
         if (payment.IsMatriculaPayment())

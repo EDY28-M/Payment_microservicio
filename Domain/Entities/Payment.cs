@@ -22,9 +22,9 @@ public class Payment
     public int IdPeriodo { get; set; }
 
     [Required]
-    [Column("stripe_payment_intent_id")]
+    [Column("stripe_session_id")]
     [MaxLength(255)]
-    public string StripePaymentIntentId { get; set; } = string.Empty;
+    public string StripeSessionId { get; set; } = string.Empty;
 
     [Column("stripe_customer_id")]
     [MaxLength(255)]
@@ -42,11 +42,12 @@ public class Payment
     [Required]
     [Column("status")]
     [MaxLength(50)]
-    public string Status { get; set; } = "pending";
+    public string Status { get; set; } = "Pending";
 
-    [Column("payment_method")]
+    [Required]
+    [Column("payment_type")]
     [MaxLength(50)]
-    public string? PaymentMethod { get; set; }
+    public string PaymentType { get; set; } = "Enrollment"; // 'Enrollment' o 'Course'
 
     [Column("metadata_json")]
     public string? MetadataJson { get; set; }
