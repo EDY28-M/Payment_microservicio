@@ -214,12 +214,26 @@ public class PaymentsController : ControllerBase
 
     private int? GetEstudianteId()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-            return null;
+        // Buscar el claim "EstudianteId" que el backend principal agrega al JWT
+        var estudianteIdClaim = User.FindFirst("EstudianteId")?.Value;
+        
+        if (!string.IsNullOrEmpty(estudianteIdClaim) && int.TryParse(estudianteIdClaim, out var estudianteId))
+        {
+            _logger.LogInformation("EstudianteId obtenido del token: {EstudianteId}", estudianteId);
+            return estudianteId;
+        }
 
-        // TODO: Aquí deberías obtener el ID del estudiante desde el backend principal
-        // Por ahora asumimos que el userId es el idEstudiante
-        return userId;
+        // Fallback: Si no encontramos EstudianteId, intentamos con NameIdentifier (para compatibilidad)
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out var userId))
+        {
+            _logger.LogWarning("EstudianteId no encontrado, usando NameIdentifier: {UserId}", userId);
+            return userId;
+        }
+
+        _logger.LogError("No se pudo obtener EstudianteId del token. Claims disponibles: {Claims}", 
+            string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}")));
+        
+        return null;
     }
 }
