@@ -1,0 +1,54 @@
+using Microsoft.EntityFrameworkCore;
+using PaymentMicroservicio.Domain.Entities;
+
+namespace PaymentMicroservicio.Infrastructure.Data;
+
+/// <summary>
+/// DbContext para el microservicio de pagos
+/// </summary>
+public class PaymentDbContext : DbContext
+{
+    public PaymentDbContext(DbContextOptions<PaymentDbContext> options) : base(options)
+    {
+    }
+
+    public DbSet<Payment> Payments { get; set; }
+    public DbSet<PaymentItem> PaymentItems { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Payment configuration
+        modelBuilder.Entity<Payment>(entity =>
+        {
+            entity.ToTable("Payment");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.StripePaymentIntentId).IsUnique();
+            entity.HasIndex(e => e.IdEstudiante);
+            entity.HasIndex(e => e.IdPeriodo);
+            entity.HasIndex(e => e.Status);
+
+            entity.Property(e => e.Amount).HasPrecision(10, 2);
+            entity.Property(e => e.Currency).HasMaxLength(3);
+            entity.Property(e => e.Status).HasMaxLength(50);
+        });
+
+        // PaymentItem configuration
+        modelBuilder.Entity<PaymentItem>(entity =>
+        {
+            entity.ToTable("PaymentItem");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.IdPayment);
+            entity.HasIndex(e => e.IdCurso);
+
+            entity.Property(e => e.PrecioUnitario).HasPrecision(10, 2);
+            entity.Property(e => e.Subtotal).HasPrecision(10, 2);
+
+            entity.HasOne(e => e.Payment)
+                .WithMany(p => p.PaymentItems)
+                .HasForeignKey(e => e.IdPayment)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+}
