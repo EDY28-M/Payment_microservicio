@@ -124,8 +124,10 @@ builder.Services.AddCors(options =>
 // DEPENDENCY INJECTION
 // ========================================
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<IPaymentReceiptRepository, PaymentReceiptRepository>();
 builder.Services.AddScoped<IStripeService, StripeService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IPaymentReceiptService, PaymentReceiptService>();
 
 // ========================================
 // BUILD APP

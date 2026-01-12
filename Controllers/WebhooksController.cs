@@ -14,17 +14,20 @@ public class WebhooksController : ControllerBase
 {
     private readonly IPaymentService _paymentService;
     private readonly IStripeService _stripeService;
+    private readonly IPaymentReceiptService _receiptService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<WebhooksController> _logger;
 
     public WebhooksController(
         IPaymentService paymentService,
         IStripeService stripeService,
+        IPaymentReceiptService receiptService,
         IConfiguration configuration,
         ILogger<WebhooksController> logger)
     {
         _paymentService = paymentService;
         _stripeService = stripeService;
+        _receiptService = receiptService;
         _configuration = configuration;
         _logger = logger;
     }
@@ -107,7 +110,20 @@ public class WebhooksController : ControllerBase
 
         if (session.PaymentStatus == "paid")
         {
+            // Procesar pago (marcar como exitoso)
             await _paymentService.ProcessPaymentCompletedAsync(session.Id);
+            
+            // Crear recibo digital (idempotente - no duplicará si ya existe)
+            try
+            {
+                await _receiptService.CreateReceiptFromSessionAsync(session, stripeEvent);
+                _logger.LogInformation("Receipt creado para sesión: {SessionId}", session.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al crear receipt para sesión {SessionId}: {Message}", session.Id, ex.Message);
+                // No lanzar excepción para no afectar el procesamiento del pago
+            }
         }
     }
 
@@ -151,6 +167,23 @@ public class WebhooksController : ControllerBase
                 
                 await _paymentService.ProcessPaymentCompletedAsync(session.Id);
                 _logger.LogInformation("✅ Pago procesado exitosamente para sesión {SessionId}", session.Id);
+                
+                // Crear recibo digital (idempotente - no duplicará si ya existe)
+                try
+                {
+                    // Obtener la sesión completa desde Stripe para crear el receipt
+                    var fullSession = await _stripeService.GetSessionAsync(session.Id);
+                    if (fullSession != null && fullSession.PaymentStatus == "paid")
+                    {
+                        await _receiptService.CreateReceiptFromSessionAsync(fullSession, stripeEvent);
+                        _logger.LogInformation("Receipt creado para sesión: {SessionId}", session.Id);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error al crear receipt para sesión {SessionId}: {Message}", session.Id, ex.Message);
+                    // No lanzar excepción para no afectar el procesamiento del pago
+                }
             }
             else
             {

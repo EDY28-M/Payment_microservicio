@@ -14,6 +14,7 @@ public class PaymentDbContext : DbContext
 
     public DbSet<Payment> Payments { get; set; }
     public DbSet<PaymentItem> PaymentItems { get; set; }
+    public DbSet<PaymentReceipt> PaymentReceipts { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -52,6 +53,24 @@ public class PaymentDbContext : DbContext
                 .WithMany(p => p.PaymentItems)
                 .HasForeignKey(e => e.IdPayment)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // PaymentReceipt configuration
+        modelBuilder.Entity<PaymentReceipt>(entity =>
+        {
+            entity.ToTable("PaymentReceipt");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ReceiptCode).IsUnique().HasDatabaseName("UQ_PaymentReceipt_receipt_code");
+            entity.HasIndex(e => e.StripeSessionId).IsUnique().HasDatabaseName("UQ_PaymentReceipt_stripe_session_id");
+            entity.HasIndex(e => e.StripeEventId).IsUnique().HasDatabaseName("UQ_PaymentReceipt_stripe_event_id");
+            entity.HasIndex(e => e.StudentId);
+            entity.HasIndex(e => e.StudentCode);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
+
+            entity.Property(e => e.Amount).HasPrecision(10, 2);
+            entity.Property(e => e.Currency).HasMaxLength(3);
+            entity.Property(e => e.Status).HasMaxLength(50);
         });
     }
 }
