@@ -53,8 +53,7 @@ public class PaymentRepository : IPaymentRepository
         return await _context.Payments
             .Where(p => p.IdEstudiante == idEstudiante 
                      && p.IdPeriodo == idPeriodo 
-                     && p.Status == "Succeeded"
-                     && p.Procesado == true
+                     && p.Status.ToLower() == "succeeded"
                      && (p.PaymentType == "Enrollment" || p.MetadataJson.Contains("matricula")))
             .OrderByDescending(p => p.FechaCreacion)
             .FirstOrDefaultAsync();
@@ -65,8 +64,7 @@ public class PaymentRepository : IPaymentRepository
         return await _context.Payments
             .AnyAsync(p => p.IdEstudiante == idEstudiante 
                         && p.IdPeriodo == idPeriodo 
-                        && p.Status == "Succeeded"
-                        && p.Procesado == true
+                        && p.Status.ToLower() == "succeeded"
                         && (p.PaymentType == "Enrollment" || p.MetadataJson.Contains("matricula")));
     }
 
