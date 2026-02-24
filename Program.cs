@@ -123,6 +123,7 @@ builder.Services.AddCors(options =>
 // ========================================
 // DEPENDENCY INJECTION
 // ========================================
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IPaymentReceiptRepository, PaymentReceiptRepository>();
 builder.Services.AddScoped<IStripeService, StripeService>();

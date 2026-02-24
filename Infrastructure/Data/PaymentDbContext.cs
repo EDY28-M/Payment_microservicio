@@ -31,6 +31,9 @@ public class PaymentDbContext : DbContext
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.PaymentType);
             entity.HasIndex(e => e.Procesado);
+            // Composite index for the most critical query: VerificarMatriculaPagada
+            entity.HasIndex(e => new { e.IdEstudiante, e.IdPeriodo, e.Status, e.PaymentType })
+                  .HasDatabaseName("IX_Payment_Verificacion");
 
             entity.Property(e => e.Amount).HasPrecision(10, 2);
             entity.Property(e => e.Currency).HasMaxLength(3);

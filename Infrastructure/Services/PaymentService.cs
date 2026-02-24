@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using PaymentMicroservicio.Application.DTOs;
 using PaymentMicroservicio.Application.Interfaces;
 using PaymentMicroservicio.Domain.Entities;
@@ -15,6 +16,7 @@ public class PaymentService : IPaymentService
     private readonly IStripeService _stripeService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<PaymentService> _logger;
+    private readonly IMemoryCache _cache;
 
     // Monto fijo de matrícula en PEN
     private const decimal MATRICULA_AMOUNT = 5.00m;
@@ -24,12 +26,14 @@ public class PaymentService : IPaymentService
         IPaymentRepository paymentRepository,
         IStripeService stripeService,
         IConfiguration configuration,
-        ILogger<PaymentService> logger)
+        ILogger<PaymentService> logger,
+        IMemoryCache cache)
     {
         _paymentRepository = paymentRepository;
         _stripeService = stripeService;
         _configuration = configuration;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<CheckoutSessionResponse> CreateCheckoutSessionAsync(int idEstudiante, CreateCheckoutSessionRequest request)
@@ -157,11 +161,8 @@ public class PaymentService : IPaymentService
             return;
         }
 
-        // Obtener detalles de la sesión de Stripe
-        var session = await _stripeService.GetSessionAsync(sessionId);
-
+        // No need to call Stripe API again — the webhook already confirms payment success
         payment.MarkAsSucceeded();
-        // Note: PaymentMethod no está implementado en este modelo simplificado
 
         // Si es pago de matrícula, marcar como procesado automáticamente
         if (payment.IsMatriculaPayment())
@@ -171,6 +172,10 @@ public class PaymentService : IPaymentService
         }
 
         await _paymentRepository.UpdateAsync(payment);
+
+        // Invalidar caché de verificación para este estudiante/periodo
+        var cacheKey = $"matricula_pagada_{payment.IdEstudiante}_{payment.IdPeriodo}";
+        _cache.Remove(cacheKey);
 
         _logger.LogInformation("Pago completado: {PaymentId}, Estudiante: {IdEstudiante}", 
             payment.Id, payment.IdEstudiante);
@@ -205,7 +210,17 @@ public class PaymentService : IPaymentService
 
     public async Task<VerificarPagoResponse> VerificarMatriculaPagadaAsync(int idEstudiante, int idPeriodo)
     {
-        _logger.LogInformation("[VERIFICAR] Verificando matrícula pagada: estudiante={IdEstudiante}, periodo={IdPeriodo}",
+        var cacheKey = $"matricula_pagada_{idEstudiante}_{idPeriodo}";
+
+        // Check cache first (60 second TTL)
+        if (_cache.TryGetValue(cacheKey, out VerificarPagoResponse? cached) && cached != null)
+        {
+            _logger.LogInformation("[VERIFICAR] Cache hit: estudiante={IdEstudiante}, periodo={IdPeriodo}",
+                idEstudiante, idPeriodo);
+            return cached;
+        }
+
+        _logger.LogInformation("[VERIFICAR] Cache miss, querying DB: estudiante={IdEstudiante}, periodo={IdPeriodo}",
             idEstudiante, idPeriodo);
 
         var payment = await _paymentRepository.GetMatriculaPaymentAsync(idEstudiante, idPeriodo);
@@ -217,6 +232,9 @@ public class PaymentService : IPaymentService
             FechaPago = payment?.FechaPagoExitoso,
             Monto = payment?.Amount
         };
+
+        // Cache the result for 60 seconds
+        _cache.Set(cacheKey, response, TimeSpan.FromSeconds(60));
 
         _logger.LogInformation("[VERIFICAR] Resultado: pagado={Pagado}", response.Pagado);
 

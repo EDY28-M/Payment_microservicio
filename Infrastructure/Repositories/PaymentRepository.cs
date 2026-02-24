@@ -21,6 +21,7 @@ public class PaymentRepository : IPaymentRepository
     public async Task<Payment?> GetByIdAsync(int id)
     {
         return await _context.Payments
+            .AsNoTracking()
             .Include(p => p.PaymentItems)
             .FirstOrDefaultAsync(p => p.Id == id);
     }
@@ -30,7 +31,7 @@ public class PaymentRepository : IPaymentRepository
         return await _context.Payments
             .Include(p => p.PaymentItems)
             .FirstOrDefaultAsync(p => p.StripeSessionId == sessionId);
-    }
+    }  // Note: NO AsNoTracking here — this entity is updated after read in ProcessPaymentCompleted
 
     public async Task<Payment?> GetByPaymentIntentIdAsync(string paymentIntentId)
     {
@@ -42,6 +43,7 @@ public class PaymentRepository : IPaymentRepository
     public async Task<List<Payment>> GetByEstudianteAsync(int idEstudiante)
     {
         return await _context.Payments
+            .AsNoTracking()
             .Include(p => p.PaymentItems)
             .Where(p => p.IdEstudiante == idEstudiante)
             .OrderByDescending(p => p.FechaCreacion)
@@ -51,9 +53,10 @@ public class PaymentRepository : IPaymentRepository
     public async Task<Payment?> GetMatriculaPaymentAsync(int idEstudiante, int idPeriodo)
     {
         return await _context.Payments
+            .AsNoTracking()
             .Where(p => p.IdEstudiante == idEstudiante 
                      && p.IdPeriodo == idPeriodo 
-                     && p.Status.ToLower() == "succeeded"
+                     && p.Status == "Succeeded"
                      && (p.PaymentType == "Enrollment" || p.MetadataJson.Contains("matricula")))
             .OrderByDescending(p => p.FechaCreacion)
             .FirstOrDefaultAsync();
@@ -64,7 +67,7 @@ public class PaymentRepository : IPaymentRepository
         return await _context.Payments
             .AnyAsync(p => p.IdEstudiante == idEstudiante 
                         && p.IdPeriodo == idPeriodo 
-                        && p.Status.ToLower() == "succeeded"
+                        && p.Status == "Succeeded"
                         && (p.PaymentType == "Enrollment" || p.MetadataJson.Contains("matricula")));
     }
 
