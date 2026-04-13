@@ -1,0 +1,31 @@
+# render.yaml - Configuración para deploy en Render.com
+services:
+  - type: web
+    name: payment-microservicio
+    runtime: docker
+    dockerfilePath: ./PaymentMicroservicio/Dockerfile
+    dockerContext: ./PaymentMicroservicio
+    region: oregon
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Stripe__SecretKey
+        sync: false
+      - key: Stripe__PublishableKey
+        sync: false
+      - key: Stripe__WebhookSecret
+        sync: false
+      - key: JwtSettings__SecretKey
+        sync: false
+      - key: JwtSettings__Issuer
+        value: GestionAcademicaAPI
+      - key: JwtSettings__Audience
+        value: GestionAcademicaClients
+      - key: AppSettings__FrontendUrl
+        value: https://gestion-academica-frontend.onrender.com
+      - key: AppSettings__BackendPrincipalUrl
+        value: https://gestion-academica-api.onrender.com
