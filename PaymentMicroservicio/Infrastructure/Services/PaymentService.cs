@@ -223,6 +223,22 @@ public class PaymentService : IPaymentService
         _logger.LogInformation("[VERIFICAR] Cache miss, querying DB: estudiante={IdEstudiante}, periodo={IdPeriodo}",
             idEstudiante, idPeriodo);
 
+        // Fast-path: en el caso más común (no pagado), AnyAsync evita ordenar/materializar entidad completa.
+        var hasPaid = await _paymentRepository.HasPaidMatriculaAsync(idEstudiante, idPeriodo);
+        if (!hasPaid)
+        {
+            var unpaidResponse = new VerificarPagoResponse
+            {
+                Pagado = false,
+                PaymentId = null,
+                FechaPago = null,
+                Monto = null
+            };
+
+            _cache.Set(cacheKey, unpaidResponse, TimeSpan.FromSeconds(60));
+            return unpaidResponse;
+        }
+
         var payment = await _paymentRepository.GetMatriculaPaymentAsync(idEstudiante, idPeriodo);
 
         var response = new VerificarPagoResponse
