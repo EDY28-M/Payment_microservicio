@@ -109,14 +109,64 @@ builder.Services.AddAuthorization();
 // ========================================
 // CORS
 // ========================================
+var configuredCorsOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()?
+    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .Select(origin => origin.Trim().TrimEnd('/'))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray() ?? Array.Empty<string>();
+
+var frontendUrl = builder.Configuration["AppSettings:FrontendUrl"]?.Trim();
+if (!string.IsNullOrWhiteSpace(frontendUrl))
+{
+    configuredCorsOrigins = configuredCorsOrigins
+        .Append(frontendUrl.TrimEnd('/'))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+}
+
+var backendPrincipalUrl = builder.Configuration["AppSettings:BackendPrincipalUrl"]?.Trim();
+if (!string.IsNullOrWhiteSpace(backendPrincipalUrl))
+{
+    configuredCorsOrigins = configuredCorsOrigins
+        .Append(backendPrincipalUrl.TrimEnd('/'))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+}
+
+if (configuredCorsOrigins.Length == 0 && builder.Environment.IsDevelopment())
+{
+    configuredCorsOrigins = new[]
+    {
+        "http://localhost:3000",
+        "https://localhost:3000",
+        "http://localhost:5173",
+        "https://localhost:5173",
+        "http://localhost:5251",
+        "https://localhost:5251"
+    };
+}
+
+var useCredentialedCors = configuredCorsOrigins.Length > 0;
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("FrontendCors", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true)
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
+        if (useCredentialedCors)
+        {
+            policy.WithOrigins(configuredCorsOrigins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        }
+        else
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        }
     });
 });
 
@@ -134,14 +184,17 @@ builder.Services.AddScoped<IPaymentReceiptService, PaymentReceiptService>();
 // BUILD APP
 // ========================================
 var app = builder.Build();
+var enableSwagger = app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("Swagger:Enabled");
 
-// Swagger siempre habilitado
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+if (enableSwagger)
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Payment Microservice API v1");
-    c.RoutePrefix = "swagger";
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Payment Microservice API v1");
+        c.RoutePrefix = "swagger";
+    });
+}
 
 // Middleware de excepciones
 app.UseExceptionHandler(errorApp =>
@@ -156,9 +209,7 @@ app.UseExceptionHandler(errorApp =>
             var ex = error.Error;
             await context.Response.WriteAsJsonAsync(new
             {
-                mensaje = "Error interno del servidor",
-                detalle = app.Environment.IsDevelopment() ? ex.Message : null,
-                tipo = ex.GetType().Name
+                mensaje = "Error interno del servidor"
             });
             Console.WriteLine($"[ERROR] {ex.GetType().Name}: {ex.Message}");
             if (app.Environment.IsDevelopment())
@@ -169,7 +220,7 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
-app.UseCors("AllowAll");
+app.UseCors("FrontendCors");
 
 // No redireccionar a HTTPS en producción (detrás de proxy)
 // app.UseHttpsRedirection();

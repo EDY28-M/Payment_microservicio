@@ -68,7 +68,6 @@ public class HealthController : ControllerBase
             {
                 status = "not ready",
                 database = "error",
-                error = ex.Message,
                 timestamp = DateTime.UtcNow
             });
         }

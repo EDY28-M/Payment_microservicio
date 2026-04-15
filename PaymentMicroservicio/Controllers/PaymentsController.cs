@@ -15,12 +15,18 @@ public class PaymentsController : ControllerBase
 {
     private readonly IPaymentService _paymentService;
     private readonly IStripeService _stripeService;
+    private readonly IPaymentRepository _paymentRepository;
     private readonly ILogger<PaymentsController> _logger;
 
-    public PaymentsController(IPaymentService paymentService, IStripeService stripeService, ILogger<PaymentsController> logger)
+    public PaymentsController(
+        IPaymentService paymentService,
+        IStripeService stripeService,
+        IPaymentRepository paymentRepository,
+        ILogger<PaymentsController> logger)
     {
         _paymentService = paymentService;
         _stripeService = stripeService;
+        _paymentRepository = paymentRepository;
         _logger = logger;
     }
 
@@ -108,6 +114,20 @@ public class PaymentsController : ControllerBase
     {
         try
         {
+            if (!IsAdmin())
+            {
+                var idEstudiante = GetEstudianteId();
+                if (idEstudiante == null)
+                    return Unauthorized(new { mensaje = "No se pudo identificar al estudiante" });
+
+                var payment = await _paymentRepository.GetByIdAsync(paymentId);
+                if (payment == null)
+                    return NotFound(new { mensaje = "Pago no encontrado" });
+
+                if (payment.IdEstudiante != idEstudiante.Value)
+                    return Forbid();
+            }
+
             var status = await _paymentService.GetPaymentStatusAsync(paymentId);
             if (status == null)
                 return NotFound(new { mensaje = "Pago no encontrado" });
@@ -130,6 +150,20 @@ public class PaymentsController : ControllerBase
     {
         try
         {
+            if (!IsAdmin())
+            {
+                var idEstudiante = GetEstudianteId();
+                if (idEstudiante == null)
+                    return Unauthorized(new { mensaje = "No se pudo identificar al estudiante" });
+
+                var payment = await _paymentRepository.GetBySessionIdAsync(sessionId);
+                if (payment == null)
+                    return NotFound(new { mensaje = "Pago no encontrado" });
+
+                if (payment.IdEstudiante != idEstudiante.Value)
+                    return Forbid();
+            }
+
             var status = await _paymentService.GetPaymentStatusBySessionAsync(sessionId);
             if (status == null)
                 return NotFound(new { mensaje = "Pago no encontrado" });
@@ -152,6 +186,20 @@ public class PaymentsController : ControllerBase
     {
         try
         {
+            if (!IsAdmin())
+            {
+                var idEstudiante = GetEstudianteId();
+                if (idEstudiante == null)
+                    return Unauthorized(new { mensaje = "No se pudo identificar al estudiante" });
+
+                var payment = await _paymentRepository.GetBySessionIdAsync(sessionId);
+                if (payment == null)
+                    return NotFound(new { mensaje = "Pago no encontrado" });
+
+                if (payment.IdEstudiante != idEstudiante.Value)
+                    return Forbid();
+            }
+
             var result = await _paymentService.ConfirmSessionPaymentAsync(sessionId);
             if (result == null)
                 return NotFound(new { mensaje = "Pago no encontrado" });
@@ -169,11 +217,21 @@ public class PaymentsController : ControllerBase
     /// Verifica si el estudiante ha pagado la matrícula (endpoint público para backend principal)
     /// </summary>
     [HttpGet("verificar-matricula-pagada/{idEstudiante}/{idPeriodo}")]
-    [AllowAnonymous]
+    [Authorize]
     public async Task<ActionResult<VerificarPagoResponse>> VerificarMatriculaPagada(int idEstudiante, int idPeriodo)
     {
         try
         {
+            if (!IsAdmin())
+            {
+                var idEstudianteAutenticado = GetEstudianteId();
+                if (idEstudianteAutenticado == null)
+                    return Unauthorized(new { mensaje = "No se pudo identificar al estudiante" });
+
+                if (idEstudianteAutenticado.Value != idEstudiante)
+                    return Forbid();
+            }
+
             _logger.LogInformation("[API] Verificando matrícula pagada: estudiante={IdEstudiante}, periodo={IdPeriodo}",
                 idEstudiante, idPeriodo);
 
@@ -259,5 +317,11 @@ public class PaymentsController : ControllerBase
             string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}")));
         
         return null;
+    }
+
+    private bool IsAdmin()
+    {
+        var role = User.FindFirst(ClaimTypes.Role)?.Value ?? User.FindFirst("role")?.Value;
+        return string.Equals(role, "Administrador", StringComparison.OrdinalIgnoreCase);
     }
 }

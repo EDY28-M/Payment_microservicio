@@ -57,7 +57,7 @@ public class PaymentRepository : IPaymentRepository
             .Where(p => p.IdEstudiante == idEstudiante 
                      && p.IdPeriodo == idPeriodo 
                      && p.Status == "Succeeded"
-                     && (p.PaymentType == "Enrollment" || (p.MetadataJson != null && p.MetadataJson.Contains("matricula"))))
+                     && (p.PaymentType == "Enrollment" || p.PaymentType == "Matricula" || p.PaymentType == "matricula"))
             .OrderByDescending(p => p.FechaCreacion)
             .FirstOrDefaultAsync();
     }
@@ -68,7 +68,7 @@ public class PaymentRepository : IPaymentRepository
             .AnyAsync(p => p.IdEstudiante == idEstudiante 
                         && p.IdPeriodo == idPeriodo 
                         && p.Status == "Succeeded"
-                        && (p.PaymentType == "Enrollment" || (p.MetadataJson != null && p.MetadataJson.Contains("matricula"))));
+                        && (p.PaymentType == "Enrollment" || p.PaymentType == "Matricula" || p.PaymentType == "matricula"));
     }
 
     public async Task<Payment> CreateAsync(Payment payment)
