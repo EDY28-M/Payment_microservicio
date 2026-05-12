@@ -5,3 +5,6 @@
 **/node_modules
 **/.env
 **/appsettings.Development.json
+**/._*
+._*
+**/.DS_Store
